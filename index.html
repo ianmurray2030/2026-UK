@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Itinerary Planner V9.3</title>
+<style>
+  :root {
+    --bg: #f3f6fb;
+    --card: #ffffff;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --border: #d7deea;
+    --accent: #2563eb;
+    --accent-2: #1d4ed8;
+    --success: #15803d;
+    --danger: #dc2626;
+    --warn: #b45309;
+    --soft: #eef4ff;
+    --soft-green: #ecfdf5;
+    --soft-yellow: #fffbeb;
+    --soft-red: #fef2f2;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: var(--bg); color: var(--text); }
+  .container { max-width: 1360px; margin: 0 auto; padding: 20px; }
+  h1 { margin: 0 0 8px; }
+  .subtitle { color: var(--muted); margin: 0 0 16px; }
+  .section {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  }
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 10px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .span-2 { grid-column: span 2; }
+  .span-3 { grid-column: span 3; }
+  .span-4 { grid-column: span 4; }
+  .span-6 { grid-column: span 6; }
+  .span-8 { grid-column: span 8; }
+  .span-12 { grid-column: span 12; }
+  label { font-size: 12px; color: var(--muted); }
+  input, textarea, button, select {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    background: white;
+  }
+  textarea { min-height: 92px; resize: vertical; }
+  button { cursor: pointer; font-weight: 700; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .primary:hover { background: var(--accent-2); }
+  .ghost { background: white; }
+  .success { background: var(--success); color: #fff; border-color: var(--success); }
+  .danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  .stat { background: linear-gradient(180deg, #fff, #fbfdff); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .stat .label { font-size: 12px; color: var(--muted); }
+  .stat .value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+  .days { display: flex; flex-direction: column; gap: 14px; }
+  .day-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .day-header {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 14px 16px; background: var(--accent); color: white; cursor: pointer;
+  }
+  .day-header .meta { font-size: 13px; opacity: 0.93; }
+  .day-body { padding: 12px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: #fff; }
+  th, td { border-bottom: 1px solid var(--border); padding: 10px; text-align: left; vertical-align: top; font-size: 14px; }
+  th { background: #f8fbff; }
+  tr:last-child td { border-bottom: none; }
+  .mobile-cards { display: none; }
+  .item-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: white; }
+  .item-card h3 { margin: 0 0 8px; font-size: 16px; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .pill, .badge {
+    display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px;
+    margin-right: 6px; margin-bottom: 6px; font-weight: 700;
+  }
+  .pill { background: #eef2ff; color: #3730a3; }
+  .badge.locked { background: #dbeafe; color: #1d4ed8; }
+  .badge.paid { background: #dcfce7; color: #166534; }
+  .badge.unpaid { background: #fee2e2; color: #991b1b; }
+  .badge.final { background: #ede9fe; color: #5b21b6; }
+  .badge.cancel-soon { background: var(--soft-yellow); color: #92400e; }
+  .badge.cancel-overdue { background: var(--soft-red); color: #991b1b; }
+  .badge.cancel-safe { background: var(--soft-green); color: #166534; }
+  .people-box, .flag-box {
+    display: flex; flex-wrap: wrap; gap: 14px; border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px; background: #fff;
+  }
+  .people-box label, .flag-box label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--text); }
+  .people-box input, .flag-box input { transform: scale(1.05); margin: 0; padding: 0; }
+  .attachments { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .att { border: 1px solid var(--border); border-radius: 10px; padding: 6px 8px; display: inline-flex; gap: 6px; align-items: center; background: #fcfdff; }
+  .att img { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; }
+  .inline-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .drag-handle { cursor: move; color: var(--muted); font-weight: bold; font-size: 18px; line-height: 1; }
+  .hint { color: var(--muted); font-size: 12px; }
+  .hidden { display: none !important; }
+  .drop-target { outline: 2px dashed #93c5fd; outline-offset: -2px; }
+  .filter-row { display: grid; grid-template-columns: repeat(12, 1fr); gap: 10px; align-items: end; }
+  .warning-box { border: 1px solid #fed7aa; background: #fff7ed; color: #9a3412; border-radius: 12px; padding: 12px; }
+  @media (max-width: 1100px) {
+    .stats { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 980px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .span-2, .span-3, .span-4, .span-6, .span-8, .span-12 { grid-column: span 12; }
+    .filter-row .span-2, .filter-row .span-3, .filter-row .span-4, .filter-row .span-6, .filter-row .span-8, .filter-row .span-12 { grid-column: span 12; }
+  }
+  @media (max-width: 760px) {
+  .container { padding: 12px; }
+  .stats { grid-template-columns: 1fr; }
+  .desktop-table { display: none; }
+  .mobile-cards { display: block; }
+  .day-header { flex-direction: column; align-items: flex-start; }
+  .btn-row { flex-direction: column; align-items: stretch; }
+  .btn-row button, .btn-row input[type=file] { width: 100%; }
+
+  /* ✅ ADD THIS BLOCK BELOW */
+
+  #formPanel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: white;
+    z-index: 1000;
+    overflow-y: auto;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    padding-bottom: 80px;
+  }
+
+  #formPanel.active {
+    transform: translateY(0);
+  }
+
+  .mobile-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .mobile-topbar button {
+    width: auto;
+  }
+}
+  @media print {
+    body { background: white; }
+    .no-print { display: none !important; }
+    .section, .day-card { box-shadow: none; border: 1px solid #bbb; }
+    .day-header { background: #e5e7eb !important; color: black; }
+    .day-body.hidden { display: block !important; }
+    a { color: black; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Itinerary Planner V9.3</h1>
+  <p class="subtitle">Adds fully integrated booking status, cancellation tracking, visual warnings, and filters while keeping imports backward-compatible with older itinerary backups.</p>
+
+  <div class="section no-print">
+    <div class="grid">
+      <div class="field span-3">
+        <label for="startDay">Start day / date</label>
+        <input id="startDay" placeholder="e.g. Day 1 or 2026-09-12">
+      </div>
+      <div class="field span-2">
+        <label for="startTime">Start time</label>
+        <input id="startTime" type="time">
+      </div>
+      <div class="field span-3">
+        <label for="endDay">End day / date</label>
+        <input id="endDay" placeholder="Optional — e.g. Day 2 or 2026-09-13">
+      </div>
+      <div class="field span-2">
+        <label for="endTime">End time</label>
+        <input id="endTime" type="time">
+      </div>
+      <div class="field span-2">
+        <label for="cancellationDate">Cancellation date</label>
+        <input id="cancellationDate" type="date">
+      </div>
+      <div class="field span-6">
+        <label for="activity">Activity</label>
+        <input id="activity" placeholder="e.g. Check in at hotel, flight, tour, dinner">
+      </div>
+      <div class="field span-3">
+        <label for="location">Location</label>
+        <input id="location" placeholder="Location">
+      </div>
+      <div class="field span-3">
+        <label for="map">Map link</label>
+        <input id="map" placeholder="Paste a Google Maps link">
+      </div>
+      <div class="field span-2">
+        <label for="cost">Total cost</label>
+        <input id="cost" type="number" step="0.01" placeholder="0.00">
+      </div>
+      <div class="field span-2">
+        <label for="c1">Couple 1</label>
+        <input id="c1" type="number" step="0.01" placeholder="0.00">
+      </div>
+      <div class="field span-2">
+        <label for="c2">Couple 2</label>
+        <input id="c2" type="number" step="0.01" placeholder="0.00">
+      </div>
+      <div class="field span-6">
+        <label>Cost status</label>
+        <div class="flag-box">
+          <label><input type="checkbox" id="priceLocked"> Price Locked-in</label>
+          <label><input type="checkbox" id="paid"> Paid</label>
+        </div>
+      </div>
+      <div class="field span-3">
+        <label for="paidBy">Paid by</label>
+        <select id="paidBy" disabled>
+          <option value="">Select payer</option>
+          <option value="TBD">TBD</option>
+          <option value="Ruth/Ian">Ruth/Ian</option>
+          <option value="Anne/Jason">Anne/Jason</option>
+        </select>
+      </div>
+      <div class="field span-12">
+        <label>People involved</label>
+        <div class="people-box">
+          <label><input type="checkbox" id="personRuth"> Ruth</label>
+          <label><input type="checkbox" id="personIan"> Ian</label>
+          <label><input type="checkbox" id="personAnne"> Anne</label>
+          <label><input type="checkbox" id="personJason"> Jason</label>
+        </div>
+      </div>
+      <div class="field span-12">
+        <label for="notes">Notes / confirmation / booking details</label>
+        <textarea id="notes" placeholder="Booking refs, opening hours, what to bring, who paid, etc."></textarea>
+      </div>
+      <div class="field span-12">
+        <label for="attachments">Photos / PDFs / documents (multiple files supported)</label>
+        <input id="attachments" type="file" multiple>
+        <div class="hint">Older backups still import. Once imported, edit any item to add cancellation dates, price status, payment status, and people involved.</div>
+      </div>
+      <div class="span-12 btn-row">
+        <button id="saveBtn" class="primary">Add item</button>
+        <button id="cancelEditBtn" class="ghost hidden">Cancel edit</button>
+        <button id="resetFormBtn" class="ghost">Clear form</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="stats">
+      <div class="stat"><div class="label">Total trip cost</div><div class="value" id="totalCost">0.00</div></div>
+      <div class="stat"><div class="label">Couple 1 total</div><div class="value" id="totalC1">0.00</div></div>
+      <div class="stat"><div class="label">Couple 2 total</div><div class="value" id="totalC2">0.00</div></div>
+      <div class="stat"><div class="label">Activities</div><div class="value" id="activityCount">0</div></div>
+      <div class="stat"><div class="label">Paid items</div><div class="value" id="paidCount">0</div></div>
+      <div class="stat"><div class="label">Cancellation warnings</div><div class="value" id="warningCount">0</div></div>
+    </div>
+  </div>
+
+  <div class="section no-print">
+    <div class="filter-row">
+      <div class="field span-3">
+        <label for="searchFilter">Search</label>
+        <input id="searchFilter" placeholder="Search activity, place, notes">
+      </div>
+      <div class="field span-2">
+        <label for="personFilter">People</label>
+        <select id="personFilter">
+          <option value="">All people</option>
+          <option>Ruth</option>
+          <option>Ian</option>
+          <option>Anne</option>
+          <option>Jason</option>
+        </select>
+      </div>
+      <div class="field span-2">
+        <label for="statusFilter">Booking / payment</label>
+        <select id="statusFilter">
+          <option value="">Any status</option>
+          <option value="paid">Paid only</option>
+          <option value="unpaid">Unpaid only</option>
+          <option value="locked">Price locked only</option>
+          <option value="unlocked">Price not locked</option>
+        </select>
+      </div>
+      <div class="field span-2">
+        <label for="cancellationFilter">Cancellation filter</label>
+        <select id="cancellationFilter">
+          <option value="">Any cancellation state</option>
+          <option value="upcoming">Upcoming in next 14 days</option>
+          <option value="overdue">Past cancellation date</option>
+          <option value="hasDate">Has cancellation date</option>
+          <option value="none">No cancellation date</option>
+        </select>
+      </div>
+      <div class="field span-3">
+        <label>&nbsp;</label>
+        <div class="btn-row">
+          <button id="clearFiltersBtn" class="ghost">Clear filters</button>
+          <button id="printBtn" class="success">Print / Save as PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="formPanel" class="section no-print">
+    <div class="btn-row">
+      <button id="exportCsvBtn" class="ghost">Export CSV</button>
+      <button id="exportJsonBtn" class="ghost">Export backup (JSON)</button>
+      <label class="ghost" style="display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; border:1px solid var(--border); cursor:pointer;">
+        Import backup
+        <input id="importFile" type="file" accept="application/json,.json" style="display:none;">
+      </label>
+      <button id="clearAllBtn" class="danger">Clear all</button>
+    </div>
+    <div class="hint" style="margin-top:8px;">Imports backup JSON from older versions too. Old day/time maps to start day/time automatically, and new status fields default safely until you edit them.</div>
+  </div>
+
+  <div id="warningPanel" class="section hidden"></div>
+  <div id="days" class="days"></div>
+</div>
+
+<!-- FIXED: Correct Realtime Database script imports -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+<script>
+// 1. Firebase Config (With FIXED databaseURL added!)
+const firebaseConfig = {
+  apiKey: "AIzaSyBEDNyTQG1J_aUHuTWGyr79BminejcFUbA",
+  authDomain: "uk-trip-c5140.firebaseapp.com",
+  databaseURL: "https://uk-trip-c5140-default-rtdb.firebaseio.com",
+  projectId: "uk-trip-c5140",
+  storageBucket: "uk-trip-c5140.firebasestorage.app",
+  messagingSenderId: "583772704261",
+  appId: "1:583772704261:web:243abc74fd20b051d3966c",
+  measurementId: "G-LT5CRD5HZ0"
+};
+
+// 2. Initialize Firebase Realtime Database
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const tripRef = db.ref("trips/main");
+
+// 3. Application State & Variables
+const STORAGE_KEY = 'tripPlannerV9';
+const APP_VERSION = "9.3";  
+const PEOPLE = ['Ruth', 'Ian', 'Anne', 'Jason'];
+let data = loadState();
+let editId = null;
+let collapseState = {};
+
+// 4. Realtime Database Live Sync
+tripRef.on("value", (snapshot) => {
+  if (snapshot.exists()) {
+    data = snapshot.val().data || [];
+    render(); // Updates UI only
+  }
+});
+
+// 5. Consolidated Save Function (Saves directly to Firebase Realtime Database!)
+function saveState() {
+  tripRef.set({ data: data }).catch(err => {
+    console.error("Firebase Database Save Error: ", err);
+  });
+}
+
+// 6. Helper & Application Functions
+function loadState() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (Array.isArray(raw)) return raw.map(normalizeItem);
+  } catch (_) {}
+  return [];
+}
+
+function uid() { return 'i_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+function byId(id) { return data.find(x => x.id === id); }
+function formatMoney(v) { return Number(v || 0).toFixed(2); }
+function escapeHtml(v) { return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;'); }
+function csvEscape(value) { const text = String(value ?? ''); return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text; }
+
+function selectedPeopleFromForm() {
+  return {
+    Ruth: document.getElementById('personRuth').checked,
+    Ian: document.getElementById('personIan').checked,
+    Anne: document.getElementById('personAnne').checked,
+    Jason: document.getElementById('personJason').checked
+  };
+}
+function setPeopleOnForm(people) {
+  document.getElementById('personRuth').checked = !!people.Ruth;
+  document.getElementById('personIan').checked = !!people.Ian;
+  document.getElementById('personAnne').checked = !!people.Anne;
+  document.getElementById('personJason').checked = !!people.Jason;
+}
+function peopleList(people) { return PEOPLE.filter(name => people && people[name]); }
+function peopleHtml(people) {
+  const list = peopleList(people);
+  if (!list.length) return '<span class="sub">—</span>';
+  return list.map(name => `<span class="pill">${escapeHtml(name)}</span>`).join('');
+}
+function normalizePeople(item) {
+  if (item.people && typeof item.people === 'object') {
+    return { Ruth: !!item.people.Ruth, Ian: !!item.people.Ian, Anne: !!item.people.Anne, Jason: !!item.people.Jason };
+  }
+  return { Ruth: false, Ian: false, Anne: false, Jason: false };
+}
+function normalizeItem(item) {
+  return {
+    id: item.id || uid(),
+    startDay: item.startDay || item.day || '',
+    startTime: item.startTime || item.time || '',
+    endDay: item.endDay || '',
+    endTime: item.endTime || '',
+    cancellationDate: item.cancellationDate || item.cancelDate || '',
+    activity: item.activity || '',
+    location: item.location || '',
+    cost: Number(item.cost) || 0,
+    c1: Number(item.c1 ?? item.costCouple1) || 0,
+    c2: Number(item.c2 ?? item.costCouple2) || 0,
+    map: item.map || item.mapLink || '',
+    notes: item.notes || '',
+    people: normalizePeople(item),
+    priceLocked: !!item.priceLocked,
+    paid: !!item.paid,
+    attachments: Array.isArray(item.attachments) ? item.attachments : [],
+    sortIndex: Number.isFinite(item.sortIndex) ? item.sortIndex : Date.now(),
+    paidBy: item.paidBy || (item.paid ? 'TBD' : ''),
+  };
+}
+function getTimestamp() {
+  const now = new Date();
+
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const min = String(now.getMinutes()).padStart(2, '0');
+
+  return `${yyyy}${mm}${dd}${hh}${min}`;
+}
+function groupKeySort(a, b) {
+  if (a === 'Unscheduled') return 1;
+  if (b === 'Unscheduled') return -1;
+
+  return a.localeCompare(b);
+}
+function parseFiles(files) {
+  return Promise.all(Array.from(files || []).map(file => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve({ name: file.name, type: file.type || 'application/octet-stream', size: file.size, data: e.target.result });
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  })));
+}
+
+function resetForm() {
+  editId = null;
+  ['startDay','startTime','endDay','endTime','cancellationDate','activity','location','cost','c1','c2','map','notes','attachments'].forEach(id => document.getElementById(id).value = '');
+  setPeopleOnForm({ Ruth:false, Ian:false, Anne:false, Jason:false });
+  document.getElementById('priceLocked').checked = false;
+  document.getElementById('paid').checked = false;
+  document.getElementById('saveBtn').textContent = 'Add item';
+  document.getElementById('cancelEditBtn').classList.add('hidden');
+  document.getElementById('paidBy').value = '';
+  document.getElementById('paidBy').disabled = true;
+}
+function formatDisplayDate(isoDate) {
+  if (!isoDate || isoDate === 'Unscheduled') return isoDate;
+
+  const d = new Date(isoDate);
+
+  if (isNaN(d)) return isoDate;
+
+  const days = [
+    'Sunday', 'Monday', 'Tuesday', 'Wednesday',
+    'Thursday', 'Friday', 'Saturday'
+  ];
+
+  const months = [
+    'January', 'February', 'March', 'April',
+    'May', 'June', 'July', 'August',
+    'September', 'October', 'November', 'December'
+  ];
+
+  const dayName = days[d.getDay()];
+  const date = d.getDate();
+
+  // ✅ ordinal suffix
+  const suffix =
+    date === 1 || date === 21 || date === 31 ? 'st' :
+    date === 2 || date === 22 ? 'nd' :
+    date === 3 || date === 23 ? 'rd' : 'th';
+
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+
+  return `${dayName} ${String(date).padStart(2, '0')}${suffix} ${month} ${year}`;
+}
+
+
+function populateForm(itemId) {
+  const item = byId(itemId); if (!item) return;
+  editId = item.id;
+  document.getElementById('startDay').value = item.startDay || '';
+  document.getElementById('startTime').value = item.startTime || '';
+  document.getElementById('endDay').value = item.endDay || '';
+  document.getElementById('endTime').value = item.endTime || '';
+  document.getElementById('cancellationDate').value = item.cancellationDate || '';
+  document.getElementById('activity').value = item.activity || '';
+  document.getElementById('location').value = item.location || '';
+  document.getElementById('cost').value = item.cost || '';
+  document.getElementById('c1').value = item.c1 || '';
+  document.getElementById('c2').value = item.c2 || '';
+  document.getElementById('map').value = item.map || '';
+  document.getElementById('notes').value = item.notes || '';
+  document.getElementById('attachments').value = '';
+  document.getElementById('priceLocked').checked = !!item.priceLocked;
+  document.getElementById('paid').checked = !!item.paid;
+  setPeopleOnForm(item.people || {});
+  document.getElementById('saveBtn').textContent = 'Save changes';
+  document.getElementById('cancelEditBtn').classList.remove('hidden');
+  document.getElementById('paidBy').value =
+      item.paidBy || (item.paid ? 'TBD' : '');
+  document.getElementById('paidBy').disabled = !item.paid;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function syncPaidByState() {
+  const paid = document.getElementById('paid').checked;
+  const paidBy = document.getElementById('paidBy');
+
+  paidBy.disabled = !paid;
+
+  if (paid && !paidBy.value) {
+    paidBy.value = 'TBD';
+  }
+
+  if (!paid) {
+    paidBy.value = '';
+  }
+}
+async function saveForm() {
+  const startDay = document.getElementById('startDay').value.trim();
+  const activity = document.getElementById('activity').value.trim();
+
+  if (!startDay || !activity) {
+    alert('Start day/date and activity are required.');
+    return;
+  }
+
+  const newAttachments = await parseFiles(
+    document.getElementById('attachments').files
+  );
+
+  const payload = {
+    id: editId || uid(),
+    startDay,
+    startTime: document.getElementById('startTime').value,
+    endDay: document.getElementById('endDay').value.trim(),
+    endTime: document.getElementById('endTime').value,
+    cancellationDate: document.getElementById('cancellationDate').value,
+    activity,
+    location: document.getElementById('location').value.trim(),
+    cost: Number(document.getElementById('cost').value) || 0,
+    c1: Number(document.getElementById('c1').value) || 0,
+    c2: Number(document.getElementById('c2').value) || 0,
+    map: document.getElementById('map').value.trim(),
+    notes: document.getElementById('notes').value.trim(),
+    people: selectedPeopleFromForm(),
+    priceLocked: document.getElementById('priceLocked').checked,
+    paid: document.getElementById('paid').checked,
+    paidBy: document.getElementById('paid').checked
+      ? (document.getElementById('paidBy').value || 'TBD')
+      : '',
+    attachments: newAttachments,
+    sortIndex: Date.now()
+  };
+
+  if (editId) {
+    const existing = byId(editId);
+    if (!existing) return;
+
+    payload.sortIndex = existing.sortIndex;
+    payload.attachments = newAttachments.length
+      ? existing.attachments.concat(newAttachments)
+      : existing.attachments;
+
+    const idx = data.findIndex(x => x.id === editId);
+    data[idx] = normalizeItem(payload);
+  } else {
+    data.push(normalizeItem(payload));
+  }
+
+  resetForm();
+  saveState();
+  render();
+}
+
+   function deleteItem(id) {
+  const item = byId(id); if (!item) return;
+  if (!confirm('Delete "' + item.activity + '"?')) return;
+  data = data.filter(x => x.id !== id);
+  if (editId === id) resetForm();
+  saveState(); // FIXED: Trigger database write
+}
+function removeAttachment(itemId, idx) { 
+  const item = byId(itemId); if (!item) return; 
+  item.attachments.splice(idx, 1); 
+  saveState(); // FIXED: Trigger database write
+}
+
+function eventRangeText(item) {
+  const start = [item.startDay, item.startTime].filter(Boolean).join(' ');
+  const end = [item.endDay, item.endTime].filter(Boolean).join(' ');
+  return end ? `${start} → ${end}` : start;
+}
+function cancellationState(dateString) {
+  if (!dateString) return { state: 'none', label: '', days: null };
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(dateString + 'T00:00:00'); target.setHours(0,0,0,0);
+  const diffDays = Math.round((target - today) / 86400000);
+  if (diffDays < 0) return { state: 'overdue', label: `Cancellation passed ${Math.abs(diffDays)} day(s) ago`, days: diffDays };
+  if (diffDays === 0) return { state: 'soon', label: 'Cancellation is today', days: diffDays };
+  if (diffDays <= 14) return { state: 'soon', label: `Cancellation in ${diffDays} day(s)`, days: diffDays };
+  return { state: 'safe', label: `Cancellation in ${diffDays} day(s)`, days: diffDays };
+}
+function statusBadges(item) {
+  const badges = [];
+
+  // Price lock status
+  badges.push(
+    item.priceLocked
+      ? '<span class="badge locked">🔒 Locked-in</span>'
+      : '<span class="badge final">💲 Not locked</span>'
+  );
+
+  // Paid + Paid By
+  if (item.paid) {
+    badges.push('<span class="badge paid">✅ Paid</span>');
+    badges.push(`<span class="badge final">💳 ${escapeHtml(item.paidBy || 'TBD')}</span>`);
+  } else {
+    badges.push('<span class="badge unpaid">⏳ Not paid</span>');
+  }
+
+  // Cancellation logic (unchanged)
+  const cancel = cancellationState(item.cancellationDate);
+
+  if (cancel.state === 'soon') {
+    badges.push(`<span class="badge cancel-soon">⚠️ ${escapeHtml(cancel.label)}</span>`);
+  }
+  if (cancel.state === 'overdue') {
+    badges.push(`<span class="badge cancel-overdue">❗ ${escapeHtml(cancel.label)}</span>`);
+  }
+  if (cancel.state === 'safe') {
+    badges.push(`<span class="badge cancel-safe">🗓 ${escapeHtml(cancel.label)}</span>`);
+  }
+
+  return badges.join(' ');
+}
+function getAttachmentHtml(item) {
+  if (!item.attachments || !(item.attachments || []).length) return '<div class="hint">No attachments</div>';
+  return '<div class="attachments">' + item.attachments.map((att, idx) => {
+    const isImage = (att.type || '').startsWith('image/');
+    const preview = isImage ? `<img src="${att.data}" alt="${escapeHtml(att.name)}">` : '<span class="pill">DOC</span>';
+    return `<div class="att">${preview}<div><div><a href="${att.data}" download="${escapeHtml(att.name)}">${escapeHtml(att.name)}</a></div><div class="sub">${Math.round((att.size || 0)/1024)} KB</div></div><button class="ghost no-print" onclick="removeAttachment('${item.id}', ${idx})">Remove</button></div>`;
+  }).join('') + '</div>';
+}
+
+function getFilteredData() {
+  const search = document.getElementById('searchFilter').value.trim().toLowerCase();
+  const person = document.getElementById('personFilter').value;
+  const status = document.getElementById('statusFilter').value;
+  const cancelFilter = document.getElementById('cancellationFilter').value;
+  return data.filter(item => {
+    if (search) {
+      const hay = [item.activity, item.location, item.notes, item.startDay, item.endDay, peopleList(item.people).join(' ')].join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    if (person && !(item.people && item.people[person])) return false;
+    if (status === 'paid' && !item.paid) return false;
+    if (status === 'unpaid' && item.paid) return false;
+    if (status === 'locked' && !item.priceLocked) return false;
+    if (status === 'unlocked' && item.priceLocked) return false;
+    const cState = cancellationState(item.cancellationDate).state;
+    if (cancelFilter === 'upcoming' && cState !== 'soon') return false;
+    if (cancelFilter === 'overdue' && cState !== 'overdue') return false;
+    if (cancelFilter === 'hasDate' && !item.cancellationDate) return false;
+    if (cancelFilter === 'none' && item.cancellationDate) return false;
+    return true;
+  });
+}
+
+function normalizeDateKey(val) {
+  if (!val) return 'Unscheduled';
+
+  const clean = val.trim();
+
+  // ✅ Match dd/mm/yyyy
+  let match = clean.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (match) {
+    const dd = String(match[1]).padStart(2, '0');
+    const mm = String(match[2]).padStart(2, '0');
+    const yyyy = match[3];
+
+    return `${yyyy}-${mm}-${dd}`; // convert to ISO
+  }
+
+  // ✅ Match yyyy-mm-dd (keep support)
+  match = clean.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (match) {
+    const yyyy = match[1];
+    const mm = String(match[2]).padStart(2, '0');
+    const dd = String(match[3]).padStart(2, '0');
+
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  return 'Unscheduled';
+}
+
+
+function groupItems(items) {
+  const groups = {};
+  items.forEach(item => {
+    const key = normalizeDateKey(item.startDay);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(item);
+  });
+  Object.keys(groups).forEach(day => {
+    groups[day].sort((a,b) => {
+      const timeA = a.startTime || '99:99'; const timeB = b.startTime || '99:99';
+      if (timeA !== timeB) return timeA.localeCompare(timeB);
+      return (a.sortIndex || 0) - (b.sortIndex || 0);
+    });
+  });
+  return groups;
+}
+function exportJson() {
+  const exportData = {
+    version: APP_VERSION,
+    exportedAt: getTimestamp(),
+    items: data
+  };
+
+  const blob = new Blob(
+    [JSON.stringify(exportData, null, 2)],
+    { type: 'application/json' }
+  );
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+
+  a.href = url;
+  a.download = `itinerary-backup-v${APP_VERSION}-${exportData.exportedAt}.json`;
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+function exportCsv() {
+  const rows = [[
+    'Start Day',
+    'Start Time',
+    'End Day',
+    'End Time',
+    'Cancellation Date',
+    'Activity',
+    'Location',
+    'Total Cost',
+    'Couple 1',
+    'Couple 2',
+    'Price Locked-in',
+    'Paid',
+    'Paid By',
+    'People',
+    'Notes',
+    'Map Link',
+    'Attachment Count'
+  ]];
+
+  data.forEach(item => rows.push([
+    item.startDay,
+    item.startTime,
+    item.endDay,
+    item.endTime,
+    item.cancellationDate,
+    item.activity,
+    item.location,
+    item.cost,
+    item.c1,
+    item.c2,
+    item.priceLocked ? 'Yes' : 'No',
+    item.paid ? 'Yes' : 'No',
+    item.paidBy || '',
+    peopleList(item.people).join('; '),
+    item.notes,
+    item.map,
+    (item.attachments || []).length
+  ]));
+
+  const csv = rows
+    .map(r => r.map(csvEscape).join(','))
+    .join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+
+  a.href = url;
+  a.download = 'itinerary-export-v9.csv';
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+
+
+
+function importJson(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+
+      let items;
+
+      if (Array.isArray(parsed)) {
+        // ✅ Old format (just array)
+        items = parsed;
+      } else if (parsed.items && Array.isArray(parsed.items)) {
+        // ✅ New format (with version + timestamp)
+        items = parsed.items;
+
+        console.log("Imported version:", parsed.version || "unknown");
+        console.log("Exported at:", parsed.exportedAt || "unknown");
+      } else {
+        throw new Error('Unsupported format');
+      }
+
+      data = items.map(normalizeItem);
+
+      resetForm();
+      saveState();  // sync to Firebase
+      render();
+
+      alert('Itinerary imported successfully.');
+
+    } catch (err) {
+      console.error(err);
+      alert('That file does not look like a supported itinerary backup JSON.');
+    }
+  };
+
+  reader.readAsText(file);
+
+  // reset input so same file can be re-imported if needed
+  event.target.value = '';
+}
+function clearAll() {if (!confirm('Clear your entire itinerary?')) return; data = []; resetForm(); saveState(); render();}
+function clearFilters() { document.getElementById('searchFilter').value = ''; document.getElementById('personFilter').value = ''; document.getElementById('statusFilter').value = ''; document.getElementById('cancellationFilter').value = ''; render(); }
+function toggleDay(day) { collapseState[day] = !collapseState[day]; renderDays(); }
+
+function renderStats() {
+  const total = data.reduce((s,x) => s + (Number(x.cost)||0), 0);
+  const c1 = data.reduce((s,x) => s + (Number(x.c1)||0), 0);
+  const c2 = data.reduce((s,x) => s + (Number(x.c2)||0), 0);
+  const paidCount = data.filter(x => x.paid).length;
+  const warningCount = data.filter(x => {
+    const state = cancellationState(x.cancellationDate).state;
+    return state === 'soon' || state === 'overdue';
+  }).length;
+  document.getElementById('totalCost').textContent = formatMoney(total);
+  document.getElementById('totalC1').textContent = formatMoney(c1);
+  document.getElementById('totalC2').textContent = formatMoney(c2);
+  document.getElementById('activityCount').textContent = data.length;
+  document.getElementById('paidCount').textContent = paidCount;
+  document.getElementById('warningCount').textContent = warningCount;
+}
+function renderWarnings(items) {
+  const warningItems = items.filter(x => ['soon','overdue'].includes(cancellationState(x.cancellationDate).state))
+    .sort((a,b) => (a.cancellationDate || '9999-99-99').localeCompare(b.cancellationDate || '9999-99-99'));
+  const panel = document.getElementById('warningPanel');
+  if (!warningItems.length) { panel.classList.add('hidden'); panel.innerHTML = ''; return; }
+  panel.classList.remove('hidden');
+  panel.innerHTML = '<div class="warning-box"><strong>Cancellation warnings</strong><div style="margin-top:8px;">' + warningItems.map(item => {
+    const c = cancellationState(item.cancellationDate);
+    return `<div style="margin-bottom:6px;"><strong>${escapeHtml(item.activity)}</strong> — ${escapeHtml(item.startDay)} • ${escapeHtml(c.label)}${item.paid ? ' • already paid' : ''}</div>`;
+  }).join('') + '</div></div>';
+}
+
+function dragStart(ev, id) { ev.dataTransfer.setData('text/plain', id); }
+function dragOver(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drop-target'); }
+function dragLeave(ev) { ev.currentTarget.classList.remove('drop-target'); }
+function dropOnItem(ev, targetId, day) {
+  ev.preventDefault(); ev.currentTarget.classList.remove('drop-target');
+  const draggedId = ev.dataTransfer.getData('text/plain'); if (!draggedId || draggedId === targetId) return;
+  const dragged = byId(draggedId); const target = byId(targetId); if (!dragged || !target) return;
+  dragged.startDay = day;
+  const dayItems = data.filter(x => x.startDay === day).sort((a,b) => (a.sortIndex||0) - (b.sortIndex||0));
+  const withoutDragged = dayItems.filter(x => x.id !== draggedId);
+  const targetIdx = withoutDragged.findIndex(x => x.id === targetId);
+  withoutDragged.splice(targetIdx < 0 ? withoutDragged.length : targetIdx, 0, dragged);
+  withoutDragged.forEach((item, idx) => { item.sortIndex = idx + 1; });
+  saveState(); // FIXED
+}
+function dropOnDay(ev, day) {
+  ev.preventDefault();
+  const draggedId = ev.dataTransfer.getData('text/plain'); const dragged = byId(draggedId); if (!dragged) return;
+  dragged.startDay = day;
+  const dayItems = data.filter(x => x.startDay === day).sort((a,b) => (a.sortIndex||0) - (b.sortIndex||0));
+  dayItems.forEach((item, idx) => item.sortIndex = idx + 1);
+  dragged.sortIndex = dayItems.length + 1; 
+  saveState(); // FIXED
+}
+function daySummary(items) {
+  const total = items.reduce((s,x) => s + x.cost, 0);
+  const c1 = items.reduce((s,x) => s + x.c1, 0);
+  const c2 = items.reduce((s,x) => s + x.c2, 0);
+  const warnings = items.filter(x => ['soon','overdue'].includes(cancellationState(x.cancellationDate).state)).length;
+  return `Activities: ${items.length} • Total: ${formatMoney(total)} • C1: ${formatMoney(c1)} • C2: ${formatMoney(c2)}${warnings ? ' • Warnings: ' + warnings : ''}`;
+}
+function renderDays() {
+  const filtered = getFilteredData();
+  renderWarnings(filtered);
+  const groups = groupItems(filtered);
+  const daysDiv = document.getElementById('days'); daysDiv.innerHTML = '';
+  const dayNames = Object.keys(groups).sort(groupKeySort);
+  if (!dayNames.length) { daysDiv.innerHTML = '<div class="section"><div class="hint">No itinerary items match the current filters.</div></div>'; return; }
+
+  dayNames.forEach(day => {
+    const items = groups[day]; const collapsed = !!collapseState[day];
+    const card = document.createElement('div'); card.className = 'day-card';
+    const header = document.createElement('div'); header.className = 'day-header';
+    header.innerHTML = `
+  <div><strong>${escapeHtml(formatDisplayDate(day))}</strong></div>
+  <div class="meta">${escapeHtml(daySummary(items))}</div>
+`;
+    header.addEventListener('click', () => toggleDay(day));
+    const body = document.createElement('div'); body.className = 'day-body' + (collapsed ? ' hidden' : '');
+    body.addEventListener('dragover', e => e.preventDefault()); body.addEventListener('drop', e => dropOnDay(e, day));
+
+    const tableWrap = document.createElement('div'); tableWrap.className = 'table-wrap desktop-table';
+    let tableHtml = '<table><thead><tr><th></th><th>Start</th><th>End</th><th>Activity</th><th>Location</th><th>People</th><th>Booking status</th><th>Cancellation</th><th>Total</th><th>C1</th><th>C2</th><th>Notes</th><th>Map</th><th>Attachments</th><th class="no-print">Actions</th></tr></thead><tbody>';
+    items.forEach(item => {
+      const cancel = cancellationState(item.cancellationDate);
+      const cancelText = item.cancellationDate ? `${item.cancellationDate}${cancel.label ? ' • ' + cancel.label : ''}` : '—';
+      tableHtml += `<tr draggable="true" ondragstart="dragStart(event, '${item.id}')" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropOnItem(event, '${item.id}', '${escapeHtml(day)}')">
+        <td><span class="drag-handle no-print">⋮⋮</span></td>
+        <td>${escapeHtml([item.startDay, item.startTime].filter(Boolean).join(' '))}</td>
+        <td>${item.endDay || item.endTime ? escapeHtml([item.endDay, item.endTime].filter(Boolean).join(' ')) : '<span class="sub">—</span>'}</td>
+        <td><strong>${escapeHtml(item.activity)}</strong></td>
+        <td>${escapeHtml(item.location || '')}</td>
+        <td>${peopleHtml(item.people)}</td>
+        <td>${statusBadges(item)}</td>
+        <td>${cancel.state === 'overdue' ? `<span class="badge cancel-overdue">${escapeHtml(cancelText)}</span>` : cancel.state === 'soon' ? `<span class="badge cancel-soon">${escapeHtml(cancelText)}</span>` : item.cancellationDate ? `<span class="badge cancel-safe">${escapeHtml(cancelText)}</span>` : '<span class="sub">—</span>'}</td>
+        <td>${formatMoney(item.cost)}</td>
+        <td>${formatMoney(item.c1)}</td>
+        <td>${formatMoney(item.c2)}</td>
+        <td>${item.notes ? escapeHtml(item.notes).replace(/\n/g, '<br>') : '<span class="sub">—</span>'}</td>
+        <td>${item.map ? `<a href="${item.map}" target="_blank">Open map</a>` : '<span class="sub">—</span>'}</td>
+        <td>${(item.attachments || []).length ? (item.attachments || []).length + ' file(s)' : '<span class="sub">—</span>'}</td>
+        <td class="no-print"><div class="inline-actions"><button class="ghost" onclick="populateForm('${item.id}')">Edit</button><button class="danger" onclick="deleteItem('${item.id}')">Delete</button></div></td>
+      </tr>`;
+    });
+    tableHtml += '</tbody></table>';
+    tableWrap.innerHTML = tableHtml;
+
+    const mobileCards = document.createElement('div'); mobileCards.className = 'mobile-cards';
+    mobileCards.innerHTML = items.map(item => {
+      const cancel = cancellationState(item.cancellationDate);
+      const cancelMarkup = item.cancellationDate
+        ? `<div style="margin-top:8px;">${cancel.state === 'overdue' ? `<span class="badge cancel-overdue">❗ ${escapeHtml(item.cancellationDate)} • ${escapeHtml(cancel.label)}</span>` : cancel.state === 'soon' ? `<span class="badge cancel-soon">⚠️ ${escapeHtml(item.cancellationDate)} • ${escapeHtml(cancel.label)}</span>` : `<span class="badge cancel-safe">🗓 ${escapeHtml(item.cancellationDate)} • ${escapeHtml(cancel.label)}</span>`}</div>`
+        : '';
+      return `
+        <div class="item-card" draggable="true" ondragstart="dragStart(event, '${item.id}')" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropOnItem(event, '${item.id}', '${escapeHtml(day)}')">
+          <div class="inline-actions no-print" style="justify-content:space-between; align-items:flex-start;">
+            <span class="drag-handle">⋮⋮</span>
+            <div class="inline-actions"><button class="ghost" onclick="populateForm('${item.id}')">Edit</button><button class="danger" onclick="deleteItem('${item.id}')">Delete</button></div>
+          </div>
+          <h3>${escapeHtml(item.activity)}</h3>
+          <div class="sub">${escapeHtml(eventRangeText(item))}${item.location ? ' • ' + escapeHtml(item.location) : ''}</div>
+          <div style="margin-top:8px;">${peopleHtml(item.people)}</div>
+          <div style="margin-top:8px;">${statusBadges(item)}</div>
+          ${cancelMarkup}
+          <div style="margin-top:8px;"><span class="pill">Total ${formatMoney(item.cost)}</span><span class="pill">C1 ${formatMoney(item.c1)}</span><span class="pill">C2 ${formatMoney(item.c2)}</span></div>
+          ${item.notes ? `<div style="margin-top:8px;">${escapeHtml(item.notes).replace(/\n/g, '<br>')}</div>` : ''}
+          <div style="margin-top:8px;">${item.map ? `<a href="${item.map}" target="_blank">Open map</a>` : '<span class="sub">No map link</span>'}</div>
+          <div style="margin-top:8px;">${getAttachmentHtml(item)}</div>
+        </div>`;
+    }).join('');
+
+    body.appendChild(tableWrap);
+    const attachmentsPanel = document.createElement('div'); attachmentsPanel.style.marginTop = '14px';
+    attachmentsPanel.innerHTML = items.filter(item => (item.attachments || []).length).map(item => `<div class="item-card"><h3>${escapeHtml(item.activity)} — attachments</h3><div class="sub">${escapeHtml(eventRangeText(item))}</div><div style="margin-top:8px;">${getAttachmentHtml(item)}</div></div>`).join('');
+    body.appendChild(attachmentsPanel);
+    body.appendChild(mobileCards);
+    card.appendChild(header); card.appendChild(body); daysDiv.appendChild(card);
+  });
+}
+function render() {
+  // FIXED: Removed saveState() from here to break the infinite render/write loop!
+  renderStats();
+  renderDays();
+}
+
+document.getElementById('saveBtn').addEventListener('click', saveForm);
+document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
+document.getElementById('resetFormBtn').addEventListener('click', resetForm);
+document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
+document.getElementById('exportJsonBtn').addEventListener('click', exportJson);
+document.getElementById('importFile').addEventListener('change', importJson);
+document.getElementById('printBtn').addEventListener('click', () => window.print());
+document.getElementById('clearAllBtn').addEventListener('click', clearAll);
+document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
+['searchFilter','personFilter','statusFilter','cancellationFilter'].forEach(id => document.getElementById(id).addEventListener('input', render));
+['personFilter','statusFilter','cancellationFilter'].forEach(id => document.getElementById(id).addEventListener('change', render));
+document.getElementById('paid')
+  .addEventListener('change', syncPaidByState);
+
+// FIXED: Re-added the complete registration of dragging and helper scripts that were truncated!
+window.dragStart = dragStart; 
+window.dragOver = dragOver; 
+window.dragLeave = dragLeave; 
+window.dropOnItem = dropOnItem;
+window.populateForm = populateForm; 
+window.deleteItem = deleteItem; 
+window.removeAttachment = removeAttachment;
+
+render();
+</script>
+</body>
+</html>
