@@ -485,9 +485,14 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 
-document.getElementById('loginBtn').onclick = () => {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider);
+document.getElementById('loginBtn').onclick = async () => {
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithPopup(provider);
+  } catch (err) {
+    console.error('Google login failed:', err);
+    alert(`Google login failed: ${err.code || err.message}`);
+  }
 };
 
 document.getElementById('logoutBtn').onclick = () => {
