@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Itinerary Planner V9.31</title>
+<title>Itinerary Planner V9.4</title>
 <style>
   :root {
     --bg: #f3f6fb;
@@ -164,7 +164,7 @@
 <body>
 
 <div class="container">
-  <h1>Itinerary Planner V9.31</h1>
+  <h1>Itinerary Planner V9.4</h1>
   <p class="subtitle">Adds fully integrated booking status, cancellation tracking, visual warnings, and filters while keeping imports backward-compatible with older itinerary backups.</p>
 
   <div class="section no-print">
@@ -256,18 +256,62 @@
   </div>
 
   <div class="section">
-    <div class="stats">
-      <div class="stat"><div class="label">Total trip cost</div><div class="value" id="totalCost">0.00</div></div>
-      <div class="stat"><div class="label">Couple 1 total</div><div class="value" id="totalC1">0.00</div></div>
-      <div class="stat"><div class="label">Couple 2 total</div><div class="value" id="totalC2">0.00</div></div>
-      <div class="stat"><div class="label">Activities</div><div class="value" id="activityCount">0</div></div>
-      <div class="stat"><div class="label">Paid items</div><div class="value" id="paidCount">0</div></div>
-      <div class="stat"><div class="label">Cancellation warnings</div><div class="value" id="warningCount">0</div></div>
+  <div class="stats">
+
+    <!-- EXISTING -->
+    <div class="stat">
+      <div class="label">Total trip cost</div>
+      <div class="value" id="totalCost">0.00</div>
     </div>
+
+    <div class="stat">
+      <div class="label">Cancellation warnings</div>
+      <div class="value" id="warningCount">0</div>
+    </div>
+
+    <!-- ✅ REQUIRED (fixes your crash) -->
+    <div class="stat">
+      <div class="label">Total C1</div>
+      <div class="value" id="totalC1">0.00</div>
+    </div>
+
+    <div class="stat">
+      <div class="label">Total C2</div>
+      <div class="value" id="totalC2">0.00</div>
+    </div>
+
+    <div class="stat">
+      <div class="label">Activities</div>
+      <div class="value" id="activityCount">0</div>
+    </div>
+
+    <div class="stat">
+      <div class="label">Paid items</div>
+      <div class="value" id="paidCount">0</div>
+    </div>
+
+    <!-- ✅ v9.4 NEW CALCULATIONS -->
+    <div class="stat">
+      <div class="label">Paid by Anne/Jason (for C1)</div>
+      <div class="value" id="paidByAJForC1">0.00</div>
+    </div>
+
+    <div class="stat">
+      <div class="label">Paid by Ruth/Ian (for C2)</div>
+      <div class="value" id="paidByRIForC2">0.00</div>
+    </div>
+
+    <div class="stat">
+      <div class="label">Difference</div>
+      <div class="value" id="netDifference">0.00</div>
+    </div>
+
   </div>
+</div>
 
   <div class="section no-print">
     <div class="filter-row">
+
       <div class="field span-3">
         <label for="searchFilter">Search</label>
         <input id="searchFilter" placeholder="Search activity, place, notes">
@@ -371,7 +415,7 @@
 ====================================================
 ITINERARY PLANNER — CHANGE LOG
 ====================================================
-
+v9.4 08-Jul-2026 7:30pm
 v9.31 (Current) 08-Jul-2026 5:20pm
 ----------------------------------------
 - FIX: Attachments now correctly add when editing items
@@ -413,11 +457,21 @@ const tripRef = db.ref("trips/main");
 
 // 3. Application State & Variables
 const STORAGE_KEY = 'tripPlannerV9';
-const APP_VERSION = "9.31";  
+const APP_VERSION = "9.4";  
 const PEOPLE = ['Ruth', 'Ian', 'Anne', 'Jason'];
 const CHANGELOG = [
   {
-    version: "9.31 08-Jul-2026",
+    version: "9.4",
+    date: "08 Jul 2026 7:30pm",
+    changes: [
+      "Added payment reconciliation calculations",
+      "Tracks cross-couple payments",
+      "Displays who owes who"
+    ]
+  },
+  {
+    version: "9.31",
+    date: "08 Jul 2026 5:30pm",
     changes: [
       "Fix: attachments now correctly add when editing items",
       "Fix: file input issues resolved",
@@ -426,6 +480,7 @@ const CHANGELOG = [
   },
   {
     version: "9.3",
+    date: "07 Jul 2026",
     changes: [
       "Mobile app UI",
       "Floating add button",
@@ -434,6 +489,7 @@ const CHANGELOG = [
   },
   {
     version: "9.2",
+    date: "06 Jul 2026",
     changes: [
       "Paid By field",
       "CSV improvements",
@@ -441,7 +497,7 @@ const CHANGELOG = [
     ]
   }
 ];
-
+''
 let data = loadState();
 let editId = null;
 let collapseState = {};
@@ -530,7 +586,7 @@ function renderVersionHistory() {
 
   container.innerHTML = CHANGELOG.map(entry => `
     <div style="margin-bottom:16px;">
-      <strong>v${entry.version}</strong>
+      <strong>v${entry.version} — ${entry.date || ''}</strong>
       <ul style="margin:6px 0 0 16px;">
         ${entry.changes.map(c => `<li>${c}</li>`).join('')}
       </ul>
@@ -976,21 +1032,86 @@ function clearFilters() { document.getElementById('searchFilter').value = ''; do
 function toggleDay(day) { collapseState[day] = !collapseState[day]; renderDays(); }
 
 function renderStats() {
-  const total = data.reduce((s,x) => s + (Number(x.cost)||0), 0);
-  const c1 = data.reduce((s,x) => s + (Number(x.c1)||0), 0);
-  const c2 = data.reduce((s,x) => s + (Number(x.c2)||0), 0);
+
+  // ✅ EXISTING TOTALS
+  const total = data.reduce((s, x) => s + (Number(x.cost) || 0), 0);
+  const c1 = data.reduce((s, x) => s + (Number(x.c1) || 0), 0);
+  const c2 = data.reduce((s, x) => s + (Number(x.c2) || 0), 0);
   const paidCount = data.filter(x => x.paid).length;
+
   const warningCount = data.filter(x => {
     const state = cancellationState(x.cancellationDate).state;
     return state === 'soon' || state === 'overdue';
   }).length;
+
+
+  // ============================================
+  // ✅ ✅ v9.4 — CROSS-COUPLE PAYMENT CALCULATIONS
+  // ============================================
+
+  let paidByAJForC1 = 0; // Couple 2 paying for Couple 1
+  let paidByRIForC2 = 0; // Couple 1 paying for Couple 2
+
+  data.forEach(item => {
+    if (!item.paid) return;
+
+    // Anne/Jason paid → covers Couple 1 portion
+    if (item.paidBy === "Anne/Jason") {
+      paidByAJForC1 += Number(item.c1 || 0);
+    }
+
+    // Ruth/Ian paid → covers Couple 2 portion
+    if (item.paidBy === "Ruth/Ian") {
+      paidByRIForC2 += Number(item.c2 || 0);
+    }
+  });
+
+  const netDifference = paidByAJForC1 - paidByRIForC2;
+
+
+  // ============================================
+  // ✅ DISPLAY EXISTING STATS
+  // ============================================
+
   document.getElementById('totalCost').textContent = formatMoney(total);
   document.getElementById('totalC1').textContent = formatMoney(c1);
   document.getElementById('totalC2').textContent = formatMoney(c2);
   document.getElementById('activityCount').textContent = data.length;
   document.getElementById('paidCount').textContent = paidCount;
   document.getElementById('warningCount').textContent = warningCount;
+
+
+
+
+  // ============================================
+  // ✅ DISPLAY v9.4 CALCULATIONS
+  // ============================================
+
+  document.getElementById('paidByAJForC1').textContent = formatMoney(paidByAJForC1);
+  document.getElementById('paidByRIForC2').textContent = formatMoney(paidByRIForC2);
+
+  let diffText;
+
+  if (netDifference > 0) {
+    diffText = `Ruth/Ian owes Anne/Jason ${formatMoney(netDifference)}`;
+  } else if (netDifference < 0) {
+    diffText = `Anne/Jason owes Ruth/Ian ${formatMoney(Math.abs(netDifference))}`;
+  } else {
+    diffText = "All settled ✅";
+  }
+
+  const diffEl = document.getElementById('netDifference');
+  diffEl.textContent = diffText;
+
+
+  // ✅ OPTIONAL COLOUR CODING (v9.4 UX polish)
+  if (netDifference > 0) {
+    diffEl.style.color = '#dc2626'; // red
+  } else if (netDifference < 0) {
+    diffEl.style.color = '#15803d'; // green
+  }
 }
+
 function renderWarnings(items) {
   const warningItems = items.filter(x => ['soon','overdue'].includes(cancellationState(x.cancellationDate).state))
     .sort((a,b) => (a.cancellationDate || '9999-99-99').localeCompare(b.cancellationDate || '9999-99-99'));
