@@ -1354,6 +1354,7 @@ document.getElementById('appTitle').innerHTML = `
   </span>
 `;
 auth.onAuthStateChanged(user => {
+console.log("User:", user);
   const loginBtn = document.getElementById('loginBtn');
   const logoutBtn = document.getElementById('logoutBtn');
   const userInfo = document.getElementById('userInfo');
