@@ -164,8 +164,15 @@
 <body>
 
 <div class="container">
-  <h1>Itinerary Planner V9.4</h1>
+  <h1 id="appTitle">Itinerary Planner</h1>
   <p class="subtitle">Adds fully integrated booking status, cancellation tracking, visual warnings, and filters while keeping imports backward-compatible with older itinerary backups.</p>
+<div class="section no-print">
+  <div class="btn-row">
+    <button id="loginBtn" class="primary">Login with Google</button>
+    <button id="logoutBtn" class="ghost hidden">Logout</button>
+    <span id="userInfo" class="hint"></span>
+  </div>
+</div>
 
   <div class="section no-print">
     <div class="grid">
@@ -399,6 +406,8 @@
 <!-- FIXED: Correct Realtime Database script imports -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
 
 <div id="versionModal" class="hidden" style="
   position: fixed;
@@ -474,6 +483,16 @@ const firebaseConfig = {
 
 // 2. Initialize Firebase Realtime Database
 firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+document.getElementById('loginBtn').onclick = () => {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider);
+};
+
+document.getElementById('logoutBtn').onclick = () => {
+  auth.signOut();
+};
 const db = firebase.database();
 const tripRef = db.ref("trips/main");
 
@@ -483,8 +502,28 @@ const APP_VERSION = "9.4";
 const PEOPLE = ['Ruth', 'Ian', 'Anne', 'Jason'];
 const CHANGELOG = [
   {
+    version: "10.0",
+    date: "09 Jul 2026",
+    changes: [
+      "Added Google login authentication",
+      "Secured database with authentication-only access",
+      "Enabled safe shared access for group members",
+      "Improved overall application security"
+    ]
+  },
+  {
+    version: "9.5",
+    date: "08 Jul 2026",
+    changes: [
+      "Added activity type classification dropdown",
+      "Introduced structured activity categories",
+      "Added reference hyperlink field for external links",
+      "Improved itinerary organisation and flexibility"
+    ]
+  },
+  {
     version: "9.4",
-    date: "08 Jul 2026 7:30pm",
+    date: "08 Jul 2026",
     changes: [
       "Added payment reconciliation calculations",
       "Tracks cross-couple payments",
@@ -519,7 +558,7 @@ const CHANGELOG = [
     ]
   }
 ];
-''
+
 let data = loadState();
 let editId = null;
 let collapseState = {};
@@ -1309,7 +1348,29 @@ document.getElementById('appTitle').innerHTML = `
     v${APP_VERSION}
   </span>
 `;
-render();
+auth.onAuthStateChanged(user => {
+  const loginBtn = document.getElementById('loginBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const userInfo = document.getElementById('userInfo');
+
+  if (user) {
+    loginBtn.classList.add('hidden');
+    logoutBtn.classList.remove('hidden');
+    userInfo.textContent = user.email;
+
+    render();
+  } else {
+    loginBtn.classList.remove('hidden');
+    logoutBtn.classList.add('hidden');
+    userInfo.textContent = '';
+
+    document.getElementById('days').innerHTML = `
+      <div class="section">
+        <div class="hint">Please log in to access the itinerary</div>
+      </div>
+    `;
+  }
+});
 </script>
 </body>
 </html>
