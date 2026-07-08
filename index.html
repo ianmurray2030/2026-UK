@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Itinerary Planner V9.3</title>
+<title>Itinerary Planner V9.31</title>
 <style>
   :root {
     --bg: #f3f6fb;
@@ -164,7 +164,7 @@
 <body>
 
 <div class="container">
-  <h1>Itinerary Planner V9.3</h1>
+  <h1>Itinerary Planner V9.31</h1>
   <p class="subtitle">Adds fully integrated booking status, cancellation tracking, visual warnings, and filters while keeping imports backward-compatible with older itinerary backups.</p>
 
   <div class="section no-print">
@@ -314,6 +314,7 @@
 
   <div id="formPanel" class="section no-print">
     <div class="btn-row">
+      <button id="versionHistoryBtn" class="ghost">  Version History</button>
       <button id="exportCsvBtn" class="ghost">Export CSV</button>
       <button id="exportJsonBtn" class="ghost">Export backup (JSON)</button>
       <label class="ghost" style="display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; border:1px solid var(--border); cursor:pointer;">
@@ -333,7 +334,66 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
+<div id="versionModal" class="hidden" style="
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+">
+
+  <div style="
+    background: white;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80%;
+    overflow-y: auto;
+    border-radius: 12px;
+    padding: 16px;
+  ">
+    
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h2 style="margin:0;">Version History</h2>
+      <button id="closeVersionModal">Close</button>
+    </div>
+
+    <div id="versionContent" style="margin-top:12px;"></div>
+
+  </div>
+</div>
 <script>
+/*
+====================================================
+ITINERARY PLANNER — CHANGE LOG
+====================================================
+
+v9.31 (Current) 08-Jul-2026 5:20pm
+----------------------------------------
+- FIX: Attachments now correctly add when editing items
+- FIX: File input works reliably on mobile and desktop
+- IMPROVED: Attachment merge logic (no overwrite issues)
+- IMPROVED: File input reset after save
+
+v9.3
+----------------------------------------
+- Mobile app-style interface (fullscreen form)
+- Floating "+" button
+- Auto open/close form behaviour
+- Versioned JSON export
+
+v9.2
+----------------------------------------
+- Added "Paid By" field
+- CSV export updated
+- Status badges improved
+
+====================================================
+*/
 // 1. Firebase Config (With FIXED databaseURL added!)
 const firebaseConfig = {
   apiKey: "AIzaSyBEDNyTQG1J_aUHuTWGyr79BminejcFUbA",
@@ -353,8 +413,35 @@ const tripRef = db.ref("trips/main");
 
 // 3. Application State & Variables
 const STORAGE_KEY = 'tripPlannerV9';
-const APP_VERSION = "9.3";  
+const APP_VERSION = "9.31";  
 const PEOPLE = ['Ruth', 'Ian', 'Anne', 'Jason'];
+const CHANGELOG = [
+  {
+    version: "9.31",
+    changes: [
+      "Fix: attachments now correctly add when editing items",
+      "Fix: file input issues resolved",
+      "Improved: attachment handling"
+    ]
+  },
+  {
+    version: "9.3",
+    changes: [
+      "Mobile app UI",
+      "Floating add button",
+      "Fullscreen form panel"
+    ]
+  },
+  {
+    version: "9.2",
+    changes: [
+      "Paid By field",
+      "CSV improvements",
+      "Status badges"
+    ]
+  }
+];
+
 let data = loadState();
 let editId = null;
 let collapseState = {};
@@ -437,6 +524,18 @@ function normalizeItem(item) {
     sortIndex: Number.isFinite(item.sortIndex) ? item.sortIndex : Date.now(),
     paidBy: item.paidBy || (item.paid ? 'TBD' : ''),
   };
+}
+function renderVersionHistory() {
+  const container = document.getElementById('versionContent');
+
+  container.innerHTML = CHANGELOG.map(entry => `
+    <div style="margin-bottom:16px;">
+      <strong>v${entry.version}</strong>
+      <ul style="margin:6px 0 0 16px;">
+        ${entry.changes.map(c => `<li>${c}</li>`).join('')}
+      </ul>
+    </div>
+  `).join('');
 }
 function getTimestamp() {
   const now = new Date();
@@ -558,9 +657,10 @@ async function saveForm() {
     return;
   }
 
-  const newAttachments = await parseFiles(
-    document.getElementById('attachments').files
-  );
+const fileInput = document.getElementById('attachments');
+const newAttachments = fileInput && fileInput.files && fileInput.files.length
+  ? await parseFiles(fileInput.files)
+  : [];
 
   const payload = {
     id: editId || uid(),
@@ -591,9 +691,10 @@ async function saveForm() {
     if (!existing) return;
 
     payload.sortIndex = existing.sortIndex;
-    payload.attachments = newAttachments.length
-      ? existing.attachments.concat(newAttachments)
-      : existing.attachments;
+    payload.attachments = [
+    ...(existing.attachments || []),
+    ...(newAttachments || [])
+    ];
 
     const idx = data.findIndex(x => x.id === editId);
     data[idx] = normalizeItem(payload);
@@ -604,6 +705,7 @@ async function saveForm() {
   resetForm();
   saveState();
   render();
+  document.getElementById('attachments').value = '';
 }
 
    function deleteItem(id) {
@@ -1029,7 +1131,20 @@ document.getElementById('clearFiltersBtn').addEventListener('click', clearFilter
 ['personFilter','statusFilter','cancellationFilter'].forEach(id => document.getElementById(id).addEventListener('change', render));
 document.getElementById('paid')
   .addEventListener('change', syncPaidByState);
+document.getElementById('versionHistoryBtn').addEventListener('click', () => {
+  renderVersionHistory();
+  document.getElementById('versionModal').classList.remove('hidden');
+});
 
+document.getElementById('closeVersionModal').addEventListener('click', () => {
+  document.getElementById('versionModal').classList.add('hidden');
+});
+
+document.getElementById('versionModal').addEventListener('click', (e) => {
+  if (e.target.id === 'versionModal') {
+    e.currentTarget.classList.add('hidden');
+  }
+});
 // FIXED: Re-added the complete registration of dragging and helper scripts that were truncated!
 window.dragStart = dragStart; 
 window.dragOver = dragOver; 
@@ -1039,6 +1154,12 @@ window.populateForm = populateForm;
 window.deleteItem = deleteItem; 
 window.removeAttachment = removeAttachment;
 
+document.getElementById('appTitle').innerHTML = `
+  Itinerary Planner 
+  <span style="font-size:14px;color:#6b7280;">
+    v${APP_VERSION}
+  </span>
+`;
 render();
 </script>
 </body>
