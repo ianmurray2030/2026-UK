@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Itinerary Planner V9.4</title>
+<title>Itinerary Planner V10.0</title>
 <style>
   :root {
     --bg: #f3f6fb;
@@ -503,7 +503,7 @@ const tripRef = db.ref("trips/main");
 
 // 3. Application State & Variables
 const STORAGE_KEY = 'tripPlannerV9';
-const APP_VERSION = "9.4";  
+const APP_VERSION = "10.0";  
 const PEOPLE = ['Ruth', 'Ian', 'Anne', 'Jason'];
 const CHANGELOG = [
   {
@@ -569,19 +569,43 @@ let editId = null;
 let collapseState = {};
 
 // 4. Realtime Database Live Sync
-tripRef.on("value", (snapshot) => {
-  if (snapshot.exists()) {
-    data = snapshot.val().data || [];
-    render(); // Updates UI only
-  }
-});
+function attachTripListener() {
+  tripRef.off();
+
+  tripRef.on(
+    "value",
+    (snapshot) => {
+      if (snapshot.exists()) {
+        data = (snapshot.val().data || []).map(normalizeItem);
+      } else {
+        data = [];
+      }
+      render();
+    },
+    (err) => {
+      console.error("Firebase read error:", err);
+      document.getElementById('days').innerHTML = `
+        <div class="section">
+          <div class="hint">Unable to load itinerary.</div>
+        </div>
+      `;
+    }
+  );
+}
 
 // 5. Consolidated Save Function (Saves directly to Firebase Realtime Database!)
 function saveState() {
+  if (!auth.currentUser) {
+    console.warn("Not signed in. Save skipped.");
+    return;
+  }
+
   tripRef.set({ data: data }).catch(err => {
-    console.error("Firebase Database Save Error: ", err);
+    console.error("Firebase Database Save Error:", err);
+    alert(`Save failed: ${err.code || err.message}`);
   });
 }
+
 
 // 6. Helper & Application Functions
 function loadState() {
@@ -691,7 +715,7 @@ function parseFiles(files) {
 
 function resetForm() {
   editId = null;
-  ['startDay','startTime','endDay','endTime','cancellationDate','activity','location','cost','c1','c2','map','notes','attachments'].forEach(id => document.getElementById(id).value = '');
+  ['startDay','startTime','endDay','endTime','cancellationDate','activity','activityType','location','map','link','cost','c1','c2','notes','attachments'].forEach(id => document.getElementById(id).value = '');
   setPeopleOnForm({ Ruth:false, Ian:false, Anne:false, Jason:false });
   document.getElementById('priceLocked').checked = false;
   document.getElementById('paid').checked = false;
@@ -1354,7 +1378,8 @@ document.getElementById('appTitle').innerHTML = `
   </span>
 `;
 auth.onAuthStateChanged(user => {
-console.log("User:", user);
+  console.log("User:", user);
+
   const loginBtn = document.getElementById('loginBtn');
   const logoutBtn = document.getElementById('logoutBtn');
   const userInfo = document.getElementById('userInfo');
@@ -1364,8 +1389,11 @@ console.log("User:", user);
     logoutBtn.classList.remove('hidden');
     userInfo.textContent = user.email;
 
-    render();
+    attachTripListener();
   } else {
+    tripRef.off();
+    data = [];
+
     loginBtn.classList.remove('hidden');
     logoutBtn.classList.add('hidden');
     userInfo.textContent = '';
